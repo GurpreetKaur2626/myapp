@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1025012459119",
+    "project_id": "rdp-to-list",
+    "storage_bucket": "rdp-to-list.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1025012459119:android:c540909c9cdb130ef20f9a",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8MbQYLq2KzBjImBjMj_XzOqKK0D7iyvg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
