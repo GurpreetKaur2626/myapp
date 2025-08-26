@@ -1,8 +1,7 @@
-import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 // Blueprint for task
 class Task{
@@ -57,11 +56,11 @@ Future<void> deleteTask(String id) async{
 
 
 // create a task provider to manage state
-class TaskProvideer extends ChangeNotifier{
+class TaskProvider extends ChangeNotifier{
   final TaskService taskService = TaskService();
   List <Task> tasks = [];
 
-  List<Task> get tasks => tasks;
+  List<Task> get task => tasks;
 
 // populates tasks list/ array with documents from database
 // notifies the root provider of stateful change
@@ -81,7 +80,7 @@ Future<void> addTask(String name) async{
   }
 }
 
-Future<void> updateTask(Task task) async{
+Future<void> updateTask(int index, bool completed) async{
   // uses array index to find tasks
   final task = tasks[index];
   // update the tasks colllection in the database by id, using bool for completed
@@ -112,12 +111,29 @@ class Home_Page extends StatefulWidget {
 }
 
 class _Home_PageState extends State<Home_Page> {
+  final TextEditingController newController = TextEditingController();
+
+  @override
+  void initState(){
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_){
+        Provider.of<TaskProvider>(context, listen: false).loadTasks();
+      });
+  }
+  }
+  
+  
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text("Hello World"),
+    return  Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Image.asset('rdplogo.png'),
+            const Text('Daily Planner'),
+          ],
+        ),
       ),
     );
   }
-}
