@@ -3,15 +3,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// Blueprint for task
-class Task{
+//blueprint for task
+class Task {
   final String id;
   final String name;
   final bool completed;
 
   Task({required this.id, required this.name, required this.completed});
 
-  factory Task.fromMap(String id, Map<String, dynamic> data){
+  factory Task.fromMap(String id, Map<String, dynamic> data) {
     return Task(
       id: id,
       name: data['name'] ?? '',
@@ -20,88 +20,86 @@ class Task{
   }
 }
 
-class TaskService{
-  // Firestore instance in an alias
+//Define a Task Service to handle Firestore operationss
+class TaskService {
+  //Firestore instance in an alias
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
-  // Future that returns a list of tasks using factory mathod defined in Task class
-  Future<List<Task>>fetchTasks() async{
-  // call get to retrieve all of the documents in the collection
+  //Future that returns a list of tasks using factory method defined in Task class
+  Future<List<Task>> fetchTasks() async {
+    //call get to retrieve all of the documents inside the collection
     final snapshot = await db.collection('tasks').orderBy('timestamp').get();
-  // snapshot of all deocuments is being mapped to factory object template
-    return snapshot.docs.map((doc) => Task.fromMap(doc.id, doc.data())).toList();
+    //snapshot of all documents is being mapped to factory object template
+    return snapshot.docs
+        .map((doc) => Task.fromMap(doc.id, doc.data()))
+        .toList();
   }
 
-
-// another asynchronous future to add tasks to the firestone
-Future<String> addTask(String name) async{
-  final newTask = {
-    'name': name,
-    'completed': false,
-    'timestamp': FieldValue.serverTimestamp(),
-  };
-  final docRef = await db.collection('tasks').add(newTask);
-  return docRef.id;
+  //another asynchronous Future to add tasks to the firestore
+  Future<String> addTask(String name) async {
+    final newTask = {
+      'name': name,
+      'completed': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+    final docRef = await db.collection('tasks').add(newTask);
+    return docRef.id;
   }
 
-// update task future
-Future<void> updateTask(String id, bool completed) async{
-  await db.collection('tasks').doc(id).update({'completed': completed});
-}
-// Future is going to deletre task 
-Future<void> deleteTask(String id) async{
-  await db.collection('tasks').doc(id).delete();
-}
+  //update task future
+  Future<void> updateTask(String id, bool completed) async {
+    await db.collection('tasks').doc(id).update({'completed': completed});
+  }
+
+  //Future is going to delete tasks
+  Future<void> deleteTasks(String id) async {
+    await db.collection('tasks').doc(id).delete();
+  }
 }
 
-
-// create a task provider to manage state
-class TaskProvider extends ChangeNotifier{
+//create a task provider to manage state
+class TaskProvider extends ChangeNotifier {
   final TaskService taskService = TaskService();
-  List <Task> tasks = [];
+  List<Task> tasks = [];
 
-  List<Task> get task => tasks;
+  //populates tasks list/array with documents from database
+  //notifies the root provider of stateful change
+  Future<void> loadTasks() async {
+    tasks = await taskService.fetchTasks();
+    notifyListeners();
+  }
 
-// populates tasks list/ array with documents from database
-// notifies the root provider of stateful change
-Future<void> loadTasks() async{
-  tasks = await taskService.fetchTasks();
-  notifyListeners();
-}
+  Future<void> addTask(String name) async {
+    //check to see if name is not empty or null
+    if (name.trim().isNotEmpty) {
+      //add the trimmed task name to the database
+      final id = await taskService.addTask(name.trim());
+      //adding the task name to the local list held in memory
+      tasks.add(Task(id: id, name: name, completed: false));
+      notifyListeners();
+    }
+  }
 
-Future<void> addTask(String name) async{
-  // check to see if name is not null or empty
-  if (name.trim().isNotEmpty){
-    // add the trimmed task name to the database
-    final id = await taskService.addTask(name.trim());
-    // adding the task name to the local list held in memory
-    tasks.add(Task(id: id, name: name, completed: false));
+  Future<void> updateTask(int index, bool completed) async {
+    //uses array index to find tasks
+    final task = tasks[index];
+    //update the task collection in the database by id, using bool for completed
+    await taskService.updateTask(task.id, completed);
+    //updating the local tasks list
+    tasks[index] = Task(id: task.id, name: task.name, completed: completed);
+    notifyListeners();
+  }
+
+  Future<void> removeTask(int index) async {
+    //uses array index  to find tasks
+    final task = tasks[index];
+    //delete the task from the collection
+    await taskService.deleteTasks(task.id);
+    //remote the task from the list in memory
+    tasks.removeAt(index);
     notifyListeners();
   }
 }
-
-Future<void> updateTask(int index, bool completed) async{
-  // uses array index to find tasks
-  final task = tasks[index];
-  // update the tasks colllection in the database by id, using bool for completed
-  await taskService.updateTask(task.id, completed);
-  // updating the local task list
-  tasks[index] = Task(id: task.id, name: task.name, completed: completed);
-  notifyListeners();
-}
-
-Future<void> deleteTask(int index) async{
-  // uses array index to find tasks
-  final task = tasks[index];
-  // delete the task from the database
-  await taskService.deleteTask(task.id);
-  //remote the task from the list in menory
-  tasks.removeAt(index);
-  notifyListeners();
-}
-}
-
-
 
 class Home_Page extends StatefulWidget {
   const Home_Page({super.key});
@@ -111,29 +109,26 @@ class Home_Page extends StatefulWidget {
 }
 
 class _Home_PageState extends State<Home_Page> {
-  final TextEditingController newController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_){
-        Provider.of<TaskProvider>(context, listen: false).loadTasks();
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<TaskProvider>(context, listen: false).loadTasks();
+    });
   }
-  }
-  
-  
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            Image.asset('rdplogo.png'),
+            Expanded(child: Image.asset('/rdplogo.png')),
             const Text('Daily Planner'),
           ],
         ),
       ),
     );
   }
+}
