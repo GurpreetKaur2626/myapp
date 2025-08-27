@@ -1,16 +1,18 @@
+import 'dart:nativewrappers/_internal/vm/lib/ffi_patch.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:table_calendar/table_calendar.dart';
+
+ 
 
 //blueprint for task
 class Task {
   final String id;
   final String name;
   final bool completed;
-
   Task({required this.id, required this.name, required this.completed});
-
   factory Task.fromMap(String id, Map<String, dynamic> data) {
     return Task(
       id: id,
@@ -24,7 +26,6 @@ class Task {
 class TaskService {
   //Firestore instance in an alias
   final FirebaseFirestore db = FirebaseFirestore.instance;
-
   //Future that returns a list of tasks using factory method defined in Task class
   Future<List<Task>> fetchTasks() async {
     //call get to retrieve all of the documents inside the collection
@@ -34,7 +35,6 @@ class TaskService {
         .map((doc) => Task.fromMap(doc.id, doc.data()))
         .toList();
   }
-
   //another asynchronous Future to add tasks to the firestore
   Future<String> addTask(String name) async {
     final newTask = {
@@ -45,30 +45,25 @@ class TaskService {
     final docRef = await db.collection('tasks').add(newTask);
     return docRef.id;
   }
-
   //update task future
   Future<void> updateTask(String id, bool completed) async {
     await db.collection('tasks').doc(id).update({'completed': completed});
   }
-
   //Future is going to delete tasks
   Future<void> deleteTasks(String id) async {
     await db.collection('tasks').doc(id).delete();
   }
 }
-
 //create a task provider to manage state
 class TaskProvider extends ChangeNotifier {
   final TaskService taskService = TaskService();
   List<Task> tasks = [];
-
   //populates tasks list/array with documents from database
   //notifies the root provider of stateful change
   Future<void> loadTasks() async {
     tasks = await taskService.fetchTasks();
     notifyListeners();
   }
-
   Future<void> addTask(String name) async {
     //check to see if name is not empty or null
     if (name.trim().isNotEmpty) {
@@ -90,8 +85,8 @@ class TaskProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> removeTask(int index) async {
-    //uses array index  to find tasks
+  Future<void> deleteTask(int index) async {
+    //uses array index to find tasks
     final task = tasks[index];
     //delete the task from the collection
     await taskService.deleteTasks(task.id);
@@ -103,32 +98,89 @@ class TaskProvider extends ChangeNotifier {
 
 class Home_Page extends StatefulWidget {
   const Home_Page({super.key});
-
   @override
   State<Home_Page> createState() => _Home_PageState();
 }
-
 class _Home_PageState extends State<Home_Page> {
-  final TextEditingController nameController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+final TextEditingController nameController = TextEditingController();
+@override
+void initState(){
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<TaskProvider>(context, listen: false).loadTasks();
     });
-  }
-  @override
+}
+ @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return  Scaffold(
       appBar: AppBar(
-        title: Row(
+        backgroundColor: Colors.blue,
+         title:Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Expanded(child: Image.asset('/rdplogo.png')),
-            const Text('Daily Planner'),
+            Expanded(child: Image.asset('assets/rdplogo.png', height:80)),
+            const Text('Daily Planner',
+            style:TextStyle(
+              fontFamily: 'Caveat',
+              fontSize: 32,
+              color: Colors.white,
+            ),
+            ),
           ],
         ),
       ),
+      body: Column(
+        children: [
+          TableCalendar(
+            calendarFormat: CalendarFormat.month,
+            focusedDay: DateTime.now(),
+            firstDay: DateTime(2025),
+            lastDay: DateTime(2026),
+          ),
+          Consumer<TaskProvider>(
+            builder: (context, taskProvider, child) {
+              return buildAddTaskSection(
+                nameController,
+                () async {
+                  await taskProvider.addTask(nameController.text);
+                  nameController.clear();
+                },
+              );
+            }
+          )
+          // Consume<TaskProvider>(builder: (context, taskProvider, child) {
+          //})
+        ],
+      ),
+      drawer: Drawer(),
     );
   }
 }
+
+
+
+// Build the sections for adding tasks
+Widget buildAddTaskSection(nameController, addTask){
+  return Container(
+    decoration: BoxDecoration(color: Colors.white),
+    child: Row(
+      children: [
+        Expanded(
+          child: Container(
+            child: TextField(
+              maxLength: 32,
+              controller:nameController,
+              decoration: const InputDecoration(
+                labelText: 'Add Task',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        ),
+        ElevatedButton(onPressed: addTask, child: Text('Add Task')),
+      ],
+    ),
+  );
+}
+
+ 
